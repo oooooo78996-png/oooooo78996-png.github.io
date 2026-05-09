@@ -3,58 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="monetag" content="be94e33a9e0c24f368481f7f2491f9fa">
-    
-    <title>X-WORLD Live</title>
+    <title>X-WORLD | Video Player</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
-        #main-content { display: flex; flex-direction: column; align-items: center; padding: 10px; }
-        header { text-align: center; padding: 20px; width: 100%; border-bottom: 1px solid #333; }
-        h1 { color: red; margin: 0; }
+        body { background: #000; color: #fff; margin: 0; font-family: sans-serif; text-align: center; }
+        .ad-container { width: 100%; min-height: 100px; background: #111; margin: 10px 0; display: flex; justify-content: center; align-items: center; }
+        #vBox { width: 100%; max-width: 600px; margin: 20px auto; position: relative; padding: 10px; }
         
-        /* ব্যানার অ্যাডের স্টাইল */
-        .ad-container { width: 100%; max-width: 500px; margin: 15px 0; text-align: center; background: #050505; min-height: 90px; }
+        /* অ্যাড স্ক্রিন স্টাইল */
+        #ad-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px; }
+        #timer { font-size: 20px; color: #ff0000; margin-top: 15px; font-weight: bold; }
         
-        .v-card { width: 100%; max-width: 500px; background: #111; border-radius: 10px; overflow: hidden; border: 1px solid #333; position: relative; }
-        video { width: 100%; display: block; }
-        .title { padding: 15px; font-size: 18px; font-weight: bold; text-align: center; }
-
-        /* Full Screen Direct Link Overlay */
-        #ad-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999; display: none; flex-direction: column;
-        }
-        #ad-frame { width: 100%; height: 88%; border: none; background: #fff; }
-        #skip-bar { height: 12%; background: #111; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid #333; }
-        .tmr-text { color: yellow; font-size: 15px; }
-        .s-btn { padding: 10px 20px; background: #333; color: #888; border: none; border-radius: 5px; cursor: not-allowed; font-weight: bold; }
-        .s-btn.active { background: #fff; color: #000; cursor: pointer; }
-        
-        .play-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-        .play-icon { width: 65px; height: 65px; background: red; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 25px; margin-bottom: 10px; }
+        /* ভিডিও প্লেয়ার */
+        video { width: 100%; border-radius: 10px; box-shadow: 0 0 20px rgba(255,0,0,0.2); }
+        .v-title { padding: 15px; font-size: 18px; font-weight: bold; }
+        #play-btn { background: #ff0000; color: #fff; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; margin-top: 20px; display: none; }
     </style>
 </head>
 <body>
 
-<div id="ad-screen">
-    <iframe id="ad-frame" src=""></iframe>
-    <div id="skip-bar">
-        <div id="tmr-txt" class="tmr-text">অ্যাড লোড হচ্ছে...</div>
-        <button id="skp-btn" class="s-btn">Skip Ad</button>
+<div class="ad-container" id="top-banner">
+    </div>
+
+<div id="vBox">
+    <div class="v-title" id="videoTitle">ভিডিও লোড হচ্ছে...</div>
+    
+    <div id="player-area" style="position: relative;">
+        <div id="ad-screen">
+            <div id="ad-content" style="width:300px; height:250px; background:#222;">
+                <p style="padding:20px; color:#666;">এখানে অ্যাড লোড হবে</p>
+            </div>
+            <div id="timer">অপেক্ষা করুন...</div>
+        </div>
+
+        <video id="mainVideo" controls poster="https://via.placeholder.com/600x340/000/fff?text=Click+to+Play">
+            আপনার ব্রাউজার ভিডিও সাপোর্ট করে না।
+        </video>
     </div>
 </div>
 
-<div id="main-content">
-    <header><h1>X-WORLD Live</h1></header>
-
-    <div class="ad-container" id="top-banner">
-        </div>
-
-    <div id="vBox">Loading...</div>
-
-    <div class="ad-container" id="bottom-banner">
-        </div>
-</div>
+<div class="ad-container" id="bottom-banner">
+    </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -71,64 +59,54 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const vBox = document.getElementById('vBox');
 
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
+    // URL থেকে ভিডিও ID নেওয়া
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoId = urlParams.get('id');
 
-    if (id) {
-        async function load() {
-            try {
-                const s = await getDoc(doc(db, "userVideos", id));
-                if (s.exists()) {
-                    const d = s.data();
-                    vBox.innerHTML = `
-                        <div class="v-card">
-                            <div style="position:relative;">
-                                <video id="main-vid" playsinline src="${d.url}"></video>
-                                <div class="play-overlay" id="start-play">
-                                    <div class="play-icon">▶</div>
-                                    <small>ভিডিও দেখতে এখানে ক্লিক করুন</small>
-                                </div>
-                            </div>
-                            <div class="title">${d.title}</div>
-                        </div>`;
-                    
-                    const startPlay = document.getElementById('start-play');
-                    const adScreen = document.getElementById('ad-screen');
-                    const adFrame = document.getElementById('ad-frame');
-                    const tmrTxt = document.getElementById('tmr-txt');
-                    const skpBtn = document.getElementById('skp-btn');
-                    const mainVid = document.getElementById('main-vid');
-
-                    startPlay.onclick = () => {
-                        // ৪. ডিরেক্ট লিঙ্ক লোড করা (Firebase থেকে আসা adLink)
-                        adFrame.src = d.adLink; 
-                        adScreen.style.display = 'flex';
-                        
-                        let timeLeft = 5;
-                        const countdown = setInterval(() => {
-                            timeLeft--;
-                            tmrTxt.innerText = "অপেক্ষা করুন: " + timeLeft + " সেকেন্ড";
-                            if(timeLeft <= 0) {
-                                clearInterval(countdown);
-                                tmrTxt.style.visibility = 'hidden';
-                                skpBtn.innerText = "Skip Ad ❯";
-                                skpBtn.classList.add('active');
-                                skpBtn.onclick = () => {
-                                    adScreen.remove();
-                                    mainVid.controls = true;
-                                    mainVid.play();
-                                };
-                            }
-                        }, 1000);
-                    };
-                }
-            } catch (e) { vBox.innerHTML = "Error: " + e.message; }
+    async function loadVideo() {
+        if (!videoId) {
+            document.getElementById('videoTitle').innerText = "ভুল লিঙ্ক! আইডি পাওয়া যায়নি।";
+            return;
         }
-        load();
+
+        const docRef = doc(db, "userVideos", videoId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            document.getElementById('videoTitle').innerText = data.title;
+            document.getElementById('mainVideo').src = data.url;
+            
+            // টাইমার শুরু
+            startTimer(data.adLink);
+        } else {
+            document.getElementById('videoTitle').innerText = "ভিডিওটি খুঁজে পাওয়া যায়নি!";
+        }
     }
+
+    function startTimer(adUrl) {
+        let count = 7; // ৭ সেকেন্ডের টাইমার
+        const timerTxt = document.getElementById('timer');
+        const adScreen = document.getElementById('ad-screen');
+
+        const countdown = setInterval(() => {
+            timerTxt.innerText = count + " সেকেন্ড পর ভিডিও শুরু হবে...";
+            count--;
+
+            if (count < 0) {
+                clearInterval(countdown);
+                // অ্যাড স্ক্রিন গায়েব করে দেওয়া
+                adScreen.style.display = 'none';
+                
+                // ইচ্ছা করলে ভিডিওর উপরে ক্লিক করলে ডিরেক্ট লিঙ্ক ওপেন হবে এমন সিস্টেম করা যায়
+                console.log("Ad Link was: " + adUrl); 
+            }
+        }, 1000);
+    }
+
+    loadVideo();
 </script>
+
 </body>
-      </html>
-      
+</html>
