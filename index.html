@@ -3,46 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X-WORLD | Video Player</title>
+    <title>X-WORLD | Video</title>
     <style>
         body { background: #000; color: #fff; margin: 0; font-family: sans-serif; text-align: center; }
-        .ad-container { width: 100%; min-height: 100px; background: #111; margin: 10px 0; display: flex; justify-content: center; align-items: center; }
-        #vBox { width: 100%; max-width: 600px; margin: 20px auto; position: relative; padding: 10px; }
+        #vBox { width: 100%; max-width: 600px; margin: 20px auto; position: relative; }
         
-        /* অ্যাড স্ক্রিন স্টাইল */
-        #ad-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px; }
-        #timer { font-size: 20px; color: #ff0000; margin-top: 15px; font-weight: bold; }
+        /* এই পর্দাটাই সরছে না, তাই এখানে z-index আর display ঠিক করলাম */
+        #ad-screen { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; z-index: 999; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+        }
         
-        /* ভিডিও প্লেয়ার */
-        video { width: 100%; border-radius: 10px; box-shadow: 0 0 20px rgba(255,0,0,0.2); }
-        .v-title { padding: 15px; font-size: 18px; font-weight: bold; }
-        #play-btn { background: #ff0000; color: #fff; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; margin-top: 20px; display: none; }
+        video { width: 100%; display: block; border-radius: 8px; }
+        #timer { font-size: 22px; color: #ff0000; margin-top: 15px; font-weight: bold; }
+        .v-title { padding: 10px; font-size: 18px; }
     </style>
 </head>
 <body>
 
-<div class="ad-container" id="top-banner">
-    </div>
-
 <div id="vBox">
-    <div class="v-title" id="videoTitle">ভিডিও লোড হচ্ছে...</div>
+    <div class="v-title" id="videoTitle">লোডিং...</div>
     
-    <div id="player-area" style="position: relative;">
+    <div style="position: relative;">
         <div id="ad-screen">
-            <div id="ad-content" style="width:300px; height:250px; background:#222;">
-                <p style="padding:20px; color:#666;">এখানে অ্যাড লোড হবে</p>
+            <div id="ad-box" style="width:300px; height:250px; background:#1a1a1a; border:1px solid #333;">
+                <p style="color:#444; margin-top:100px;">অ্যাড লোড হচ্ছে...</p>
             </div>
             <div id="timer">অপেক্ষা করুন...</div>
         </div>
 
-        <video id="mainVideo" controls poster="https://via.placeholder.com/600x340/000/fff?text=Click+to+Play">
-            আপনার ব্রাউজার ভিডিও সাপোর্ট করে না।
-        </video>
+        <video id="mainVideo" controls autoplay></video>
     </div>
 </div>
-
-<div class="ad-container" id="bottom-banner">
-    </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -60,53 +53,46 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // URL থেকে ভিডিও ID নেওয়া
     const urlParams = new URLSearchParams(window.location.search);
     const videoId = urlParams.get('id');
 
     async function loadVideo() {
-        if (!videoId) {
-            document.getElementById('videoTitle').innerText = "ভুল লিঙ্ক! আইডি পাওয়া যায়নি।";
-            return;
-        }
+        if (!videoId) return;
 
-        const docRef = doc(db, "userVideos", videoId);
-        const docSnap = await getDoc(docRef);
+        try {
+            const docRef = doc(db, "userVideos", videoId);
+            const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            document.getElementById('videoTitle').innerText = data.title;
-            document.getElementById('mainVideo').src = data.url;
-            
-            // টাইমার শুরু
-            startTimer(data.adLink);
-        } else {
-            document.getElementById('videoTitle').innerText = "ভিডিওটি খুঁজে পাওয়া যায়নি!";
-        }
-    }
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('videoTitle').innerText = data.title;
+                const videoElement = document.getElementById('mainVideo');
+                videoElement.src = data.url;
 
-    function startTimer(adUrl) {
-        let count = 7; // ৭ সেকেন্ডের টাইমার
-        const timerTxt = document.getElementById('timer');
-        const adScreen = document.getElementById('ad-screen');
+                // ভিডিওর সোর্স পাওয়ার পর টাইমার শুরু
+                let count = 5;
+                const timerTxt = document.getElementById('timer');
+                const screen = document.getElementById('ad-screen');
 
-        const countdown = setInterval(() => {
-            timerTxt.innerText = count + " সেকেন্ড পর ভিডিও শুরু হবে...";
-            count--;
+                const countdown = setInterval(() => {
+                    timerTxt.innerText = count + " সেকেন্ড বাকি...";
+                    count--;
 
-            if (count < 0) {
-                clearInterval(countdown);
-                // অ্যাড স্ক্রিন গায়েব করে দেওয়া
-                adScreen.style.display = 'none';
-                
-                // ইচ্ছা করলে ভিডিওর উপরে ক্লিক করলে ডিরেক্ট লিঙ্ক ওপেন হবে এমন সিস্টেম করা যায়
-                console.log("Ad Link was: " + adUrl); 
+                    if (count < 0) {
+                        clearInterval(countdown);
+                        // জোর করে পর্দা সরিয়ে দেওয়া
+                        screen.setAttribute("style", "display: none !important;");
+                        videoElement.play(); // অটো প্লে করার চেষ্টা
+                    }
+                }, 1000);
+
             }
-        }, 1000);
+        } catch (e) {
+            console.log("Error:", e);
+        }
     }
 
     loadVideo();
 </script>
-
 </body>
 </html>
