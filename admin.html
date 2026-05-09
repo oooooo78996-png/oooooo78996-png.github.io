@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-WORLD Admin</title>
+    <style>
+        body { background: #0b0b0b; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .box { background: #1a1a1a; padding: 25px; border-radius: 12px; width: 100%; max-width: 350px; border: 1px solid #333; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: red; color: #fff; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
+        #res { margin-top: 15px; display: none; background: #000; padding: 10px; border: 1px dashed #555; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2 style="text-align:center;color:red;">Admin Panel</h2>
+    <input type="text" id="t" placeholder="Video Title">
+    <input type="url" id="u" placeholder="Direct Video Link (MP4)">
+    <input type="url" id="a" placeholder="Monetag/Adsterra Link">
+    <button id="btn">পাবলিশ করুন</button>
+
+    <div id="res">
+        <p style="color:lime;font-size:12px;margin:0;">Share Link:</p>
+        <input type="text" id="link" readonly style="font-size:10px;margin-top:5px;">
+        <button id="copy" style="background:#444;font-size:12px;">Copy Link</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBWhYvIKGHfDO4NrH0G5N692FljzD_wmZc",
+        authDomain: "misti-am.firebaseapp.com",
+        projectId: "misti-am",
+        storageBucket: "misti-am.firebasestorage.app",
+        messagingSenderId: "335857181187",
+        appId: "1:335857181187:web:eee24712600f7018262436"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    document.getElementById('btn').onclick = async () => {
+        const title = document.getElementById('t').value;
+        const url = document.getElementById('u').value;
+        const ad = document.getElementById('a').value;
+
+        if(!title || !url || !ad) return alert("সব ঘর পূরণ করুন!");
+
+        document.getElementById('btn').innerText = "Uploading...";
+        try {
+            const docRef = await addDoc(collection(db, "userVideos"), {
+                title, url, adLink: ad, createdAt: serverTimestamp()
+            });
+
+            // আপনার দেওয়া সঠিক লিঙ্ক
+            const siteUrl = "https://ddjdjdjdjdjdjdjdjdjdj-ops.github.io/X-WORLD-Live-/"; 
+            document.getElementById('link').value = siteUrl + "?id=" + docRef.id;
+            document.getElementById('res').style.display = "block";
+            document.getElementById('btn').innerText = "পাবলিশ করুন";
+            alert("সফল হয়েছে!");
+        } catch (e) { alert("Error: " + e.message); }
+    };
+
+    document.getElementById('copy').onclick = () => {
+        const l = document.getElementById('link');
+        l.select();
+        document.execCommand("copy");
+        alert("কপি হয়েছে!");
+    };
+</script>
+</body>
+</html>
